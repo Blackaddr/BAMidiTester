@@ -1,0 +1,6 @@
+*.vs
+*.db
+*.opendb
+Win32
+Win64
+

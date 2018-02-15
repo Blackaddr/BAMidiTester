@@ -158,6 +158,7 @@ private:
 	PedalAreaComponent pedalArea;
 
 	const int NUM_KNOBS = 4;
+	Label  effectLabel;
 	Slider knob1;
 	Label  knob1Label;
 	Slider knob2;

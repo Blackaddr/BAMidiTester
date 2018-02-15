@@ -162,6 +162,14 @@ void setupKnob(Slider *slider, Slider::Listener *sliderListen,
 	
 }
 
+void setupEffectLabel(Label *label, const char *text)
+{
+	label->setText(text, dontSendNotification);
+	label->setJustificationType(Justification::centred);
+	label->setFont(Font(24.0, Font::bold));
+	label->setEditable(true);
+}
+
 void setupButton(ImageButton *button, Label *label, const char *text, Image &pressed, Image &unpressed)
 {
 	button->setImages(false, true, true, unpressed, 1.0f, Colours::transparentBlack, Image(), 1.0f, Colour(), pressed, 1.0f, Colours::transparentBlack, 0.5f);
@@ -277,6 +285,10 @@ MainContentComponent::MainContentComponent ()
 	buttonB.setClickingTogglesState(true);
 	addAndMakeVisible(buttonBLabel);
 	//buttonB.setLookAndFeel(&buttonLookAndFeel);
+
+	// Effect title	
+	setupEffectLabel(&effectLabel, "AUDIO EFFECT");
+	addAndMakeVisible(effectLabel);
 	
 	// Knob 1/2/3/4 Setup
 	setupKnob(&knob1, this, &knob1Label, "KNOB 1", &knobLookAndFeel);
@@ -362,8 +374,15 @@ void MainContentComponent::resized()
 
 	// START CUSTOM CONTROLS
 	int pedalAreaStart = nextRowStart;
-	nextRowStart += 3 * margin;
-	
+	//nextRowStart ;
+
+	// effect label
+	const int EFFECT_LABEL_WIDTH = 250;
+	const int EFFECT_LABEL_HEIGHT = 50;
+	effectLabel.setBounds((getWidth() - EFFECT_LABEL_WIDTH) / 2, nextRowStart, EFFECT_LABEL_WIDTH, EFFECT_LABEL_HEIGHT); 
+
+	nextRowStart += EFFECT_LABEL_HEIGHT + margin;
+
 	// KNOBS
 	int prevMargin = margin;
 	margin = 50;

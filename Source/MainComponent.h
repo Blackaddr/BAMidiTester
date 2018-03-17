@@ -115,7 +115,8 @@ class MainContentComponent  : public Component,
                               //private Button::Listener,
 							  ImageButton::Listener,
 	                          private Slider::Listener,
-	                          private ParamLabel::Listener
+	                          private ParamLabel::Listener,
+	                          private TextEditor::Listener
 {
 public:
     //==============================================================================
@@ -133,6 +134,7 @@ public:
     void buttonClicked (Button* buttonThatWasClicked) override;
 	void sliderValueChanged(Slider* slider) override;
 	void labelTextChanged(Label *label);
+	void textEditorTextChanged(TextEditor &editor);
 
     void openDevice (bool isInput, int index);
     void closeDevice (bool isInput, int index);
@@ -178,6 +180,11 @@ private:
 	PedalAreaComponent pedalArea;
 	TextButton loadButton;
 	TextButton saveButton;
+
+	// Midi Channel Stuff
+	Label midiChannelLabel;
+	TextEditor midiChannelText;
+	int midiChannel = 1;
 
 	const int NUM_KNOBS = 4;
 	ParamLabel  effectLabel;

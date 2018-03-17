@@ -235,6 +235,8 @@ MainContentComponent::MainContentComponent ()
       midiOutputLabel ("Midi Output Label", "MIDI Output:"),
       incomingMidiLabel ("Incoming Midi Label", "Received MIDI messages:"),
       outgoingMidiLabel ("Outgoing Midi Label", "Play the keyboard to send MIDI messages..."),
+	  midiChannelLabel ("Channel Label", "Channel: "),
+	  midiChannelText ("MIDI Channel Edit"),
       midiKeyboard (keyboardState, MidiKeyboardComponent::horizontalKeyboard),
       midiMonitor ("MIDI Monitor"),
       pairButton ("MIDI Bluetooth devices..."),
@@ -253,6 +255,12 @@ MainContentComponent::MainContentComponent ()
     addLabelAndSetStyle (midiOutputLabel);
     addLabelAndSetStyle (incomingMidiLabel);
     addLabelAndSetStyle (outgoingMidiLabel);
+	addLabelAndSetStyle (midiChannelLabel);
+	midiChannelLabel.setJustificationType(Justification::centredRight);
+	midiChannelText.setInputRestrictions(2, "0123456789");
+	midiChannelText.setText(String(midiChannel));
+	midiChannelText.setJustification(Justification::centred);
+	addAndMakeVisible(midiChannelText);
 
     midiKeyboard.setName ("MIDI Keyboard");
     addAndMakeVisible (midiKeyboard);
@@ -279,6 +287,9 @@ MainContentComponent::MainContentComponent ()
 	addAndMakeVisible(loadButton);
 	saveButton.addListener(this);
 	addAndMakeVisible(saveButton);
+
+	// Midi Channel
+	midiChannelText.addListener(this);
 
 	// Button A/B Setup
 	addAndMakeVisible(pedalArea);
@@ -460,6 +471,12 @@ void MainContentComponent::resized()
 	loadButton.setBounds(getWidth() - margin - loadSaveButtonWidth, nextRowStart, loadSaveButtonWidth, textRowHeight);
 	saveButton.setBounds(getWidth() - 2*margin - 2*loadSaveButtonWidth, nextRowStart, loadSaveButtonWidth, textRowHeight);
 
+	// Midi Channel
+	const int midiChannelLabelWidth = 50;
+	const int midiChannelTextEditWidth = 35;
+	midiChannelText.setBounds(saveButton.getX() - midiChannelTextEditWidth - 2 * margin, nextRowStart, midiChannelTextEditWidth, textRowHeight);
+	midiChannelLabel.setBounds(midiChannelText.getX() - midiChannelLabelWidth, nextRowStart, midiChannelLabelWidth, textRowHeight);
+
 	outgoingMidiLabel.setBounds(margin, nextRowStart, getWidth() - (2 * margin), textRowHeight); nextRowStart += textRowHeight + margin;
 
 	const int midiKeyboardHeight = 64;
@@ -525,13 +542,13 @@ void MainContentComponent::buttonClicked(Button* buttonThatWasClicked)
 		// Send the midi CC		
 		if (!buttonA.getToggleState()) { val = CC_OFF; }
 		else { val = CC_ON; }
-		m = new MidiMessage(MidiMessage::controllerEvent(0, buttonACCId, val));
+		m = new MidiMessage(MidiMessage::controllerEvent(midiChannel, buttonACCId, val));
 		sendMidi = true;
 	} else if (buttonThatWasClicked == &buttonB) {
 		// Send the midi CC		
 		if (!buttonB.getToggleState()) { val = CC_OFF; }
 		else { val = CC_ON; }
-		m = new MidiMessage(MidiMessage::controllerEvent(0, buttonBCCId, val));
+		m = new MidiMessage(MidiMessage::controllerEvent(midiChannel, buttonBCCId, val));
 		sendMidi = true;
 	}
 
@@ -548,19 +565,19 @@ void MainContentComponent::sliderValueChanged(Slider* slider)
 	bool sendMidi = false;
 	MidiMessage *m = nullptr;
 	if (slider == &knob1) {
-		m = new MidiMessage(MidiMessage::controllerEvent(0, knob1CCId, (int)knob1.getValue()));
+		m = new MidiMessage(MidiMessage::controllerEvent(midiChannel, knob1CCId, (int)knob1.getValue()));
 		m->setTimeStamp(Time::getMillisecondCounterHiRes() * 0.001);
 		sendToOutputs(*m);
     } else if (slider == &knob2) {
-		m = new MidiMessage(MidiMessage::controllerEvent(0, knob2CCId, (int)knob2.getValue()));
+		m = new MidiMessage(MidiMessage::controllerEvent(midiChannel, knob2CCId, (int)knob2.getValue()));
 		m->setTimeStamp(Time::getMillisecondCounterHiRes() * 0.001);
 		sendToOutputs(*m);
 	} else if (slider == &knob3) {
-		m = new MidiMessage(MidiMessage::controllerEvent(0, knob3CCId, (int)knob3.getValue()));
+		m = new MidiMessage(MidiMessage::controllerEvent(midiChannel, knob3CCId, (int)knob3.getValue()));
 		m->setTimeStamp(Time::getMillisecondCounterHiRes() * 0.001);
 		sendToOutputs(*m);
 	} else if (slider == &knob4) {
-		m = new MidiMessage(MidiMessage::controllerEvent(0, knob4CCId, (int)knob4.getValue()));
+		m = new MidiMessage(MidiMessage::controllerEvent(midiChannel, knob4CCId, (int)knob4.getValue()));
 		m->setTimeStamp(Time::getMillisecondCounterHiRes() * 0.001);
 		sendToOutputs(*m);
 	}
@@ -580,6 +597,21 @@ void MainContentComponent::labelTextChanged(Label *label)
 	if (paramLabel) {
 		// update the value
 		paramTree->setAttribute(paramLabel->getLabelName(), paramLabel->getText());
+	}
+}
+
+void MainContentComponent::textEditorTextChanged(TextEditor &editor)
+{
+	int value = editor.getText().getIntValue();
+	if (value < 1) {
+		editor.setText("");
+	}
+	else if (value > 16) {
+		editor.setText("1");
+		midiChannel = 1;
+	}
+	else {
+		midiChannel = value;
 	}
 }
 

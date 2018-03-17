@@ -613,6 +613,7 @@ void MainContentComponent::textEditorTextChanged(TextEditor &editor)
 	else {
 		midiChannel = value;
 	}
+	midiKeyboard.setMidiChannel(midiChannel);
 }
 
 //==============================================================================

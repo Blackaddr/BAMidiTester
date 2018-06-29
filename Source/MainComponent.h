@@ -93,6 +93,20 @@ private:
 };
 
 //==============================================================================
+class ParamLabel : public Label
+{
+public:
+	ParamLabel(const String &componentName = String(), const String &labelText = String(), String &labelName = String())
+		: Label(componentName, labelText), m_labelName(labelName){}
+
+	void setLabelName(String &labelName) { m_labelName = labelName;  }
+	String &getLabelName(void) { return m_labelName;  }
+private:
+	String m_labelName;
+
+};
+
+//==============================================================================
 class MainContentComponent  : public Component,
                               private Timer,
                               private MidiKeyboardStateListener,
@@ -100,7 +114,9 @@ class MainContentComponent  : public Component,
                               private MessageListener,
                               //private Button::Listener,
 							  ImageButton::Listener,
-	                          private Slider::Listener
+	                          private Slider::Listener,
+	                          private ParamLabel::Listener,
+	                          private TextEditor::Listener
 {
 public:
     //==============================================================================
@@ -117,6 +133,8 @@ public:
     void resized() override;
     void buttonClicked (Button* buttonThatWasClicked) override;
 	void sliderValueChanged(Slider* slider) override;
+	void labelTextChanged(Label *label);
+	void textEditorTextChanged(TextEditor &editor);
 
     void openDevice (bool isInput, int index);
     void closeDevice (bool isInput, int index);
@@ -140,6 +158,10 @@ private:
     void addLabelAndSetStyle (Label& label);
 
     //==============================================================================
+	XmlElement *paramTree = nullptr;
+	//ValueTree paramNamesTree = ValueTree(String("params"));
+	//ValueTree paramNamesTree = ValueTree(String("params"), { {"p"},{"1"} });
+
 	LookAndFeel_V4 buttonLookAndFeel; // [1]
 	KnobLookAndFeel knobLookAndFeel;
 
@@ -156,25 +178,32 @@ private:
 	const int APP_HEIGHT = 800;
 	// Custom Controls
 	PedalAreaComponent pedalArea;
+	TextButton loadButton;
+	TextButton saveButton;
+
+	// Midi Channel Stuff
+	Label midiChannelLabel;
+	TextEditor midiChannelText;
+	int midiChannel = 1;
 
 	const int NUM_KNOBS = 4;
-	Label  effectLabel;
+	ParamLabel  effectLabel;
 	Slider knob1;
-	Label  knob1Label;
+	ParamLabel  knob1Label;
 	Slider knob2;
-	Label  knob2Label;
+	ParamLabel  knob2Label;
 	Slider knob3;
-	Label  knob3Label;
+	ParamLabel  knob3Label;
 	Slider knob4;
-	Label  knob4Label;
+	ParamLabel  knob4Label;
 
 	const int NUM_BUTTONS = 2;
 	Image pressedButtonImg;
 	Image unpressedButtonImg;
 	ImageButton buttonA;
-	Label buttonALabel;
+	ParamLabel buttonALabel;
 	ImageButton buttonB;
-	Label buttonBLabel;
+	ParamLabel buttonBLabel;
 	//TextButton buttonA;
 	//TextButton buttonB;
 

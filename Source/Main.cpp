@@ -43,7 +43,10 @@ public:
     {
         // This method is where you should put your application's initialisation code..
         ignoreUnused (commandLine);
-        mainWindow = new MainWindow (getApplicationName());
+		String titleName = getApplicationName();
+		titleName += String(" v");
+		titleName += getApplicationVersion();
+        mainWindow = new MainWindow (titleName);
     }
 
     void shutdown() override

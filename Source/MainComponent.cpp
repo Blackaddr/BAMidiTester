@@ -26,6 +26,8 @@
 
 #include "MainComponent.h"
 
+using std::make_shared;
+
 //==============================================================================
 struct MidiDeviceListEntry : ReferenceCountedObject
 {
@@ -142,7 +144,7 @@ private:
 };
 
 void setupKnob(Slider *slider, Slider::Listener *sliderListen,
-	           Label *label,
+	           Label *label, Label::Listener *labelListen,
 	           const char *text, KnobLookAndFeel *lookfeel)
 {
 	slider->setSliderStyle(Slider::Rotary);
@@ -152,34 +154,41 @@ void setupKnob(Slider *slider, Slider::Listener *sliderListen,
 	slider->setLookAndFeel(lookfeel);
 	slider->setValue(63.0f);
 	
-	label->attachToComponent(slider, false);
-	label->setSize(slider->getWidth() * 2, slider->getHeight() * 2);
+	//label->attachToComponent(slider, false);
+	label->setSize(slider->getWidth() * 2, slider->getHeight()/2);
 	label->setBorderSize(BorderSize<int>(5));
 	label->setText(text, dontSendNotification);
+	dynamic_cast<ParamLabel*>(label)->setLabelName(String(text).replaceCharacter(' ', '_'));
 	label->setJustificationType(Justification::centred);
 	label->setFont(Font(24.0, Font::bold));
 	label->setEditable(true);
+	label->addListener(labelListen);
 	
 }
 
-void setupEffectLabel(Label *label, const char *text)
+void setupEffectLabel(Label *label, Label::Listener *listener, char *text)
 {
 	label->setText(text, dontSendNotification);
+	dynamic_cast<ParamLabel*>(label)->setLabelName(String(text).replaceCharacter(' ', '_'));
 	label->setJustificationType(Justification::centred);
 	label->setFont(Font(24.0, Font::bold));
 	label->setEditable(true);
+	label->addListener(listener);
 }
 
-void setupButton(ImageButton *button, Label *label, const char *text, Image &pressed, Image &unpressed)
+void setupButton(ImageButton *button, Label *label, Label::Listener *labelListener, char *text, Image &pressed, Image &unpressed)
 {
 	button->setImages(false, true, true, unpressed, 1.0f, Colours::transparentBlack, Image(), 1.0f, Colour(), pressed, 1.0f, Colours::transparentBlack, 0.5f);
 
 	label->setBorderSize(BorderSize<int>(5));
 	label->setText(text, dontSendNotification);
-	label->attachToComponent(button, false);
+	dynamic_cast<ParamLabel*>(label)->setLabelName(String(text).replaceCharacter(' ', '_'));
+	//label->attachToComponent(button, false);
+	label->setSize(button->getWidth() * 2, button->getHeight()/2);
 	label->setJustificationType(Justification::centred);
 	label->setFont(Font(24.0, Font::bold));
 	label->setEditable(true);
+	label->addListener(labelListener);
 }
 
 
@@ -226,6 +235,8 @@ MainContentComponent::MainContentComponent ()
       midiOutputLabel ("Midi Output Label", "MIDI Output:"),
       incomingMidiLabel ("Incoming Midi Label", "Received MIDI messages:"),
       outgoingMidiLabel ("Outgoing Midi Label", "Play the keyboard to send MIDI messages..."),
+	  midiChannelLabel ("Channel Label", "Channel: "),
+	  midiChannelText ("MIDI Channel Edit"),
       midiKeyboard (keyboardState, MidiKeyboardComponent::horizontalKeyboard),
       midiMonitor ("MIDI Monitor"),
       pairButton ("MIDI Bluetooth devices..."),
@@ -244,6 +255,12 @@ MainContentComponent::MainContentComponent ()
     addLabelAndSetStyle (midiOutputLabel);
     addLabelAndSetStyle (incomingMidiLabel);
     addLabelAndSetStyle (outgoingMidiLabel);
+	addLabelAndSetStyle (midiChannelLabel);
+	midiChannelLabel.setJustificationType(Justification::centredRight);
+	midiChannelText.setInputRestrictions(2, "0123456789");
+	midiChannelText.setText(String(midiChannel));
+	midiChannelText.setJustification(Justification::centred);
+	addAndMakeVisible(midiChannelText);
 
     midiKeyboard.setName ("MIDI Keyboard");
     addAndMakeVisible (midiKeyboard);
@@ -263,6 +280,17 @@ MainContentComponent::MainContentComponent ()
     addAndMakeVisible (pairButton);
     pairButton.addListener (this);
 
+	// Load/Save Button setup
+	loadButton.setButtonText("LOAD");
+	saveButton.setButtonText("SAVE");
+	loadButton.addListener(this);
+	addAndMakeVisible(loadButton);
+	saveButton.addListener(this);
+	addAndMakeVisible(saveButton);
+
+	// Midi Channel
+	midiChannelText.addListener(this);
+
 	// Button A/B Setup
 	addAndMakeVisible(pedalArea);
 	buttonLookAndFeel.setColour(TextButton::buttonOnColourId, Colours::green);
@@ -273,43 +301,53 @@ MainContentComponent::MainContentComponent ()
 	unpressedButtonImg = ImageCache::getFromMemory(BinaryData::ledcirclegreymd_png, BinaryData::ledcirclegreymd_pngSize);
 
 	addAndMakeVisible(buttonA);	
-	setupButton(&buttonA, &buttonALabel, "A", pressedButtonImg, unpressedButtonImg);
+	setupButton(&buttonA, &buttonALabel, this, "A", pressedButtonImg, unpressedButtonImg);
 	buttonA.addListener (this);
 	buttonA.setClickingTogglesState(true);
 	addAndMakeVisible(buttonALabel);
 	//buttonA.setLookAndFeel(&buttonLookAndFeel);
 
 	addAndMakeVisible(buttonB);
-	setupButton(&buttonB, &buttonBLabel, "B", pressedButtonImg, unpressedButtonImg);
+	setupButton(&buttonB, &buttonBLabel, this, "B", pressedButtonImg, unpressedButtonImg);
 	buttonB.addListener(this);
 	buttonB.setClickingTogglesState(true);
 	addAndMakeVisible(buttonBLabel);
 	//buttonB.setLookAndFeel(&buttonLookAndFeel);
 
 	// Effect title	
-	setupEffectLabel(&effectLabel, "AUDIO EFFECT");
+	setupEffectLabel(&effectLabel, this, "AUDIO EFFECT");
 	addAndMakeVisible(effectLabel);
 	
 	// Knob 1/2/3/4 Setup
-	setupKnob(&knob1, this, &knob1Label, "KNOB 1", &knobLookAndFeel);
+	setupKnob(&knob1, this, &knob1Label, this, "KNOB 1", &knobLookAndFeel);
 	addAndMakeVisible(knob1);
 	addAndMakeVisible(knob1Label);
 
-	setupKnob(&knob2, this, &knob2Label, "KNOB 2", &knobLookAndFeel);
+	setupKnob(&knob2, this, &knob2Label, this, "KNOB 2", &knobLookAndFeel);
 	addAndMakeVisible(knob2);
 	addAndMakeVisible(knob2Label);
 
-	setupKnob(&knob3, this, &knob3Label, "KNOB 3", &knobLookAndFeel);
+	setupKnob(&knob3, this, &knob3Label, this, "KNOB 3", &knobLookAndFeel);
 	addAndMakeVisible(knob3);
 	addAndMakeVisible(knob3Label);
 
-	setupKnob(&knob4, this, &knob4Label, "KNOB 4", &knobLookAndFeel);
+	setupKnob(&knob4, this, &knob4Label, this, "KNOB 4", &knobLookAndFeel);
 	addAndMakeVisible(knob4);
 	addAndMakeVisible(knob4Label);
 
     keyboardState.addListener (this);
     addAndMakeVisible (midiInputSelector);
     addAndMakeVisible (midiOutputSelector);
+
+	// Setup the param tree
+	paramTree = new XmlElement("params");
+	paramTree->setAttribute(effectLabel.getLabelName(), effectLabel.getText());
+	paramTree->setAttribute(knob1Label.getLabelName(), knob1Label.getText());
+	paramTree->setAttribute(knob2Label.getLabelName(), knob2Label.getText());
+	paramTree->setAttribute(knob3Label.getLabelName(), knob3Label.getText());
+	paramTree->setAttribute(knob4Label.getLabelName(), knob4Label.getText());
+	paramTree->setAttribute(buttonALabel.getLabelName(), buttonALabel.getText());
+	paramTree->setAttribute(buttonBLabel.getLabelName(), buttonBLabel.getText());
 
     startTimer (500);
 }
@@ -337,11 +375,20 @@ MainContentComponent::~MainContentComponent()
     midiInputSelector = nullptr;
     midiOutputSelector = nullptr;
     midiOutputSelector = nullptr;
+
+	paramTree = nullptr;
+	//if (paramTree) delete paramTree;
 }
 
 //==============================================================================
 void MainContentComponent::paint (Graphics&)
 {
+}
+
+void attachLabelToComp(Label *label, Component *comp, int labelHeight)
+{
+	Rectangle<int> compBounds = comp->getBounds();	
+	label->setBounds(compBounds.getCentreX() - comp->getWidth(), compBounds.getY() - (labelHeight), 2*comp->getWidth(), labelHeight);
 }
 
 //==============================================================================
@@ -388,28 +435,48 @@ void MainContentComponent::resized()
 	margin = 50;
 	const int KNOB_WIDTH = 75;
 	const int KNOB_HEIGHT = 75;
+	const int LABEL_HEIGHT = 35;
 	int knobOffset = (getWidth() - (2 * margin)) / (NUM_KNOBS - 1);
 	int nextColStart = margin;
 	knob1.setBounds(margin, nextRowStart, KNOB_WIDTH, KNOB_HEIGHT); nextColStart += knobOffset;
+	attachLabelToComp(&knob1Label, &knob1, LABEL_HEIGHT);
 	knob2.setBounds(nextColStart-KNOB_WIDTH/2, nextRowStart, KNOB_WIDTH, KNOB_HEIGHT); nextColStart += knobOffset;
+	attachLabelToComp(&knob2Label, &knob2, LABEL_HEIGHT);
 	knob3.setBounds(nextColStart-KNOB_WIDTH/2, nextRowStart, KNOB_WIDTH, KNOB_HEIGHT); nextColStart += knobOffset;
+	attachLabelToComp(&knob3Label, &knob3, LABEL_HEIGHT);
 	knob4.setBounds(getWidth()-margin-KNOB_WIDTH, nextRowStart, KNOB_WIDTH, KNOB_HEIGHT); nextRowStart += KNOB_HEIGHT/2 + margin;
+	attachLabelToComp(&knob4Label, &knob4, LABEL_HEIGHT);
 	margin = prevMargin;
 
 	// BUTTONS
 	const int CC_BUTTON_WIDTH = 100;
 	const int CC_BUTTON_HEIGHT = 50;
-	int buttonOffset = (getWidth() - (2 * margin)) / (NUM_BUTTONS+2);
+	const int PEDAL_AREA_OFFSET = margin;
+	const int PEDAL_AREA_WIDTH = getWidth() - 2 * margin;
+	// the component is -2*margin in size, the rectange graphic is another -2*margin
+	int buttonOffset = ((PEDAL_AREA_WIDTH-3*margin) / (NUM_BUTTONS+2)) + PEDAL_AREA_OFFSET;
 	nextColStart = margin;
-	buttonA.setBounds(margin+buttonOffset-CC_BUTTON_WIDTH/2, nextRowStart, CC_BUTTON_WIDTH, CC_BUTTON_HEIGHT);  nextColStart += 2*buttonOffset;
-	buttonB.setBounds(getWidth()-margin-buttonOffset-CC_BUTTON_WIDTH/2, nextRowStart, CC_BUTTON_WIDTH, CC_BUTTON_HEIGHT);  nextRowStart += CC_BUTTON_HEIGHT + margin;
+	buttonA.setBounds(buttonOffset-CC_BUTTON_WIDTH/2, nextRowStart, CC_BUTTON_WIDTH, CC_BUTTON_HEIGHT);  nextColStart += 2*buttonOffset;
+	attachLabelToComp(&buttonALabel, &buttonA, LABEL_HEIGHT);
+	buttonB.setBounds(getWidth()-buttonOffset+margin/2-CC_BUTTON_WIDTH/2, nextRowStart, CC_BUTTON_WIDTH, CC_BUTTON_HEIGHT);  nextRowStart += CC_BUTTON_HEIGHT + margin;
+	attachLabelToComp(&buttonBLabel, &buttonB, LABEL_HEIGHT);
 
 	nextRowStart += 24;
 
 	int pedalAreaStop = nextRowStart;
 
-	pedalArea.setBounds(margin, pedalAreaStart, getWidth() -2*margin, pedalAreaStop - pedalAreaStart);
+	pedalArea.setBounds(PEDAL_AREA_OFFSET, pedalAreaStart, PEDAL_AREA_WIDTH, pedalAreaStop - pedalAreaStart);
 	// END CUSTOM CONSTROLS
+	const int loadSaveButtonWidth = 50;
+	loadButton.setBounds(getWidth() - margin - loadSaveButtonWidth, nextRowStart, loadSaveButtonWidth, textRowHeight);
+	saveButton.setBounds(getWidth() - 2*margin - 2*loadSaveButtonWidth, nextRowStart, loadSaveButtonWidth, textRowHeight);
+
+	// Midi Channel
+	const int midiChannelLabelWidth = 50;
+	const int midiChannelTextEditWidth = 35;
+	midiChannelText.setBounds(saveButton.getX() - midiChannelTextEditWidth - 2 * margin, nextRowStart, midiChannelTextEditWidth, textRowHeight);
+	midiChannelLabel.setBounds(midiChannelText.getX() - midiChannelLabelWidth, nextRowStart, midiChannelLabelWidth, textRowHeight);
+
 	outgoingMidiLabel.setBounds(margin, nextRowStart, getWidth() - (2 * margin), textRowHeight); nextRowStart += textRowHeight + margin;
 
 	const int midiKeyboardHeight = 64;
@@ -432,17 +499,56 @@ void MainContentComponent::buttonClicked(Button* buttonThatWasClicked)
 		RuntimePermissions::request(
 			RuntimePermissions::bluetoothMidi,
 			[](bool wasGranted) { if (wasGranted) BluetoothMidiDevicePairingDialogue::open(); });
-	if (buttonThatWasClicked == &buttonA) {
+
+	if (buttonThatWasClicked == &saveButton) {
+		FileChooser myChooser("Please provide the XML filename you want to save...",
+			//File::getSpecialLocation(File::userHomeDirectory),
+			File::getCurrentWorkingDirectory(),
+			"*.xml");
+		if (myChooser.browseForFileToSave(true))
+		{
+			File xmlFile(myChooser.getResult());
+			paramTree->writeToFile(xmlFile, String());
+		}
+
+	} else if (buttonThatWasClicked == &loadButton) {
+		FileChooser myChooser("Please select the XML file you want to load...",
+			//File::getSpecialLocation(File::userHomeDirectory),
+			File::getCurrentWorkingDirectory(),
+			"*.xml");
+		if (myChooser.browseForFileToOpen())
+		{
+			File xmlFile(myChooser.getResult());
+			if (paramTree) delete paramTree;
+			paramTree = XmlDocument::parse(xmlFile);
+
+			if (!paramTree) {
+				midiMonitor.insertTextAtCaret(String("Error loading file\n"));
+				midiMonitor.insertTextAtCaret(xmlFile.getFileName());
+				midiMonitor.insertTextAtCaret("\n");
+			}
+		}
+
+		
+		effectLabel.setText(paramTree->getStringAttribute(StringRef(effectLabel.getLabelName()),String("Err")), dontSendNotification);
+		knob1Label.setText(paramTree->getStringAttribute(StringRef(knob1Label.getLabelName()), String("Err")), dontSendNotification);
+		knob2Label.setText(paramTree->getStringAttribute(StringRef(knob2Label.getLabelName()), String("Err")), dontSendNotification);
+		knob3Label.setText(paramTree->getStringAttribute(StringRef(knob3Label.getLabelName()), String("Err")), dontSendNotification);
+		knob4Label.setText(paramTree->getStringAttribute(StringRef(knob4Label.getLabelName()), String("Err")), dontSendNotification);
+		buttonALabel.setText(paramTree->getStringAttribute(StringRef(buttonALabel.getLabelName()), String("Err")), dontSendNotification);
+		buttonBLabel.setText(paramTree->getStringAttribute(StringRef(buttonBLabel.getLabelName()), String("Err")), dontSendNotification);
+		
+	} else if (buttonThatWasClicked == &buttonA) {
 		// Send the midi CC		
 		if (!buttonA.getToggleState()) { val = CC_OFF; }
 		else { val = CC_ON; }
-		m = new MidiMessage(MidiMessage::controllerEvent(0, buttonACCId, val));
+		m = new MidiMessage(MidiMessage::controllerEvent(midiChannel, buttonACCId, val));
 		sendMidi = true;
 	} else if (buttonThatWasClicked == &buttonB) {
 		// Send the midi CC		
 		if (!buttonB.getToggleState()) { val = CC_OFF; }
 		else { val = CC_ON; }
-		m = new MidiMessage(MidiMessage::controllerEvent(0, buttonBCCId, val));
+		m = new MidiMessage(MidiMessage::controllerEvent(midiChannel, buttonBCCId, val));
 		sendMidi = true;
 	}
 
@@ -459,19 +565,19 @@ void MainContentComponent::sliderValueChanged(Slider* slider)
 	bool sendMidi = false;
 	MidiMessage *m = nullptr;
 	if (slider == &knob1) {
-		m = new MidiMessage(MidiMessage::controllerEvent(0, knob1CCId, (int)knob1.getValue()));
+		m = new MidiMessage(MidiMessage::controllerEvent(midiChannel, knob1CCId, (int)knob1.getValue()));
 		m->setTimeStamp(Time::getMillisecondCounterHiRes() * 0.001);
 		sendToOutputs(*m);
     } else if (slider == &knob2) {
-		m = new MidiMessage(MidiMessage::controllerEvent(0, knob2CCId, (int)knob2.getValue()));
+		m = new MidiMessage(MidiMessage::controllerEvent(midiChannel, knob2CCId, (int)knob2.getValue()));
 		m->setTimeStamp(Time::getMillisecondCounterHiRes() * 0.001);
 		sendToOutputs(*m);
 	} else if (slider == &knob3) {
-		m = new MidiMessage(MidiMessage::controllerEvent(0, knob3CCId, (int)knob3.getValue()));
+		m = new MidiMessage(MidiMessage::controllerEvent(midiChannel, knob3CCId, (int)knob3.getValue()));
 		m->setTimeStamp(Time::getMillisecondCounterHiRes() * 0.001);
 		sendToOutputs(*m);
 	} else if (slider == &knob4) {
-		m = new MidiMessage(MidiMessage::controllerEvent(0, knob4CCId, (int)knob4.getValue()));
+		m = new MidiMessage(MidiMessage::controllerEvent(midiChannel, knob4CCId, (int)knob4.getValue()));
 		m->setTimeStamp(Time::getMillisecondCounterHiRes() * 0.001);
 		sendToOutputs(*m);
 	}
@@ -481,6 +587,33 @@ void MainContentComponent::sliderValueChanged(Slider* slider)
 		sendToOutputs(*m);
 		delete m;
 	}
+}
+
+void MainContentComponent::labelTextChanged(Label *label)
+{
+
+	// Ensure it's a ParamLabel
+	ParamLabel *paramLabel = dynamic_cast<ParamLabel *>(label);
+	if (paramLabel) {
+		// update the value
+		paramTree->setAttribute(paramLabel->getLabelName(), paramLabel->getText());
+	}
+}
+
+void MainContentComponent::textEditorTextChanged(TextEditor &editor)
+{
+	int value = editor.getText().getIntValue();
+	if (value < 1) {
+		editor.setText("");
+	}
+	else if (value > 16) {
+		editor.setText("1");
+		midiChannel = 1;
+	}
+	else {
+		midiChannel = value;
+	}
+	midiKeyboard.setMidiChannel(midiChannel);
 }
 
 //==============================================================================

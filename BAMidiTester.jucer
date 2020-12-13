@@ -2,10 +2,10 @@
 
 <JUCERPROJECT id="wHE0ay" name="BAMidiTester" projectType="guiapp" version="1.1.0"
               bundleIdentifier="com.blackaddr.BAMidiTester" includeBinaryInAppConfig="1"
-              jucerVersion="5.2.0" displaySplashScreen="1" reportAppUsage="1"
-              splashScreenColour="Dark" companyName="Blackaddr Audio" cppLanguageStandard="11"
-              companyCopyright="Blackaddr Audio" companyWebsite="www.blackaddr.com"
-              companyEmail="info@blackaddr.com">
+              displaySplashScreen="1" reportAppUsage="1" splashScreenColour="Dark"
+              companyName="Blackaddr Audio" cppLanguageStandard="11" companyCopyright="Blackaddr Audio"
+              companyWebsite="www.blackaddr.com" companyEmail="info@blackaddr.com"
+              jucerFormatVersion="1">
   <MAINGROUP id="s3xxCh" name="BAMidiTester">
     <GROUP id="{7D29F5BC-1B05-AE8F-9202-5CF152AB1103}" name="Source">
       <FILE id="kpmJ3T" name="Main.cpp" compile="1" resource="0" file="Source/Main.cpp"/>
@@ -92,10 +92,10 @@
     </LINUX_MAKE>
     <XCODE_MAC targetFolder="Builds/MacOSX" extraCompilerFlags="-std=c++14 -Wall -Wshadow -Wstrict-aliasing -Wconversion -Wsign-compare -Woverloaded-virtual -Wextra-semi">
       <CONFIGURATIONS>
-        <CONFIGURATION name="Debug" osxSDK="default" osxCompatibility="10.9 SDK" osxArchitecture="default"
-                       isDebug="1" optimisation="1" targetName="MidiTest" enablePluginBinaryCopyStep="1"/>
-        <CONFIGURATION name="Release" osxSDK="default" osxCompatibility="10.9 SDK" osxArchitecture="default"
-                       isDebug="0" optimisation="3" targetName="MidiTest" enablePluginBinaryCopyStep="1"/>
+        <CONFIGURATION name="Debug" osxCompatibility="10.9 SDK" isDebug="1" optimisation="1"
+                       targetName="MidiTest" enablePluginBinaryCopyStep="1"/>
+        <CONFIGURATION name="Release" osxCompatibility="10.9 SDK" isDebug="0" optimisation="3"
+                       targetName="MidiTest" enablePluginBinaryCopyStep="1"/>
       </CONFIGURATIONS>
       <MODULEPATHS>
         <MODULEPATH id="juce_gui_extra" path="../../modules"/>
@@ -112,8 +112,9 @@
         <MODULEPATH id="juce_dsp" path="../../modules"/>
       </MODULEPATHS>
     </XCODE_MAC>
-    <XCODE_IPHONE targetFolder="Builds/iOS" iosScreenOrientation="portraitlandscape"
-                  iPadScreenOrientation="portraitlandscape" iosDeviceFamily="1,2">
+    <XCODE_IPHONE targetFolder="Builds/iOS" iosScreenOrientation="UIInterfaceOrientationPortrait,UIInterfaceOrientationLandscapeLeft,UIInterfaceOrientationLandscapeRight"
+                  iPadScreenOrientation="UIInterfaceOrientationPortrait,UIInterfaceOrientationLandscapeLeft,UIInterfaceOrientationLandscapeRight"
+                  iosDeviceFamily="1,2">
       <CONFIGURATIONS>
         <CONFIGURATION name="Debug" iosCompatibility="8.0" isDebug="1" optimisation="1"
                        targetName="MidiTest" enablePluginBinaryCopyStep="1"/>
@@ -161,17 +162,20 @@
     </ANDROIDSTUDIO>
   </EXPORTFORMATS>
   <MODULES>
-    <MODULE id="juce_audio_basics" showAllCode="1" useLocalCopy="0"/>
-    <MODULE id="juce_audio_devices" showAllCode="1" useLocalCopy="0"/>
-    <MODULE id="juce_audio_formats" showAllCode="1" useLocalCopy="0"/>
-    <MODULE id="juce_audio_processors" showAllCode="1" useLocalCopy="0"/>
-    <MODULE id="juce_audio_utils" showAllCode="1" useLocalCopy="0"/>
-    <MODULE id="juce_core" showAllCode="1" useLocalCopy="0"/>
-    <MODULE id="juce_data_structures" showAllCode="1" useLocalCopy="0"/>
-    <MODULE id="juce_events" showAllCode="1" useLocalCopy="0"/>
-    <MODULE id="juce_graphics" showAllCode="1" useLocalCopy="0"/>
-    <MODULE id="juce_gui_basics" showAllCode="1" useLocalCopy="0"/>
-    <MODULE id="juce_gui_extra" showAllCode="1" useLocalCopy="0"/>
+    <MODULE id="juce_audio_basics" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_audio_devices" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_audio_formats" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_audio_processors" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_audio_utils" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_core" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_data_structures" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_events" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_graphics" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_gui_basics" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_gui_extra" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
   </MODULES>
   <JUCEOPTIONS/>
+  <LIVE_SETTINGS>
+    <LINUX/>
+  </LIVE_SETTINGS>
 </JUCERPROJECT>

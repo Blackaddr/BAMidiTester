@@ -31,14 +31,15 @@ using std::make_shared;
 //==============================================================================
 struct MidiDeviceListEntry : ReferenceCountedObject
 {
-    MidiDeviceListEntry (const String& deviceName) : name (deviceName) {}
+    MidiDeviceListEntry (MidiDeviceInfo info) : deviceInfo (info) {}
 
-    String name;
-    ScopedPointer<MidiInput> inDevice;
-    ScopedPointer<MidiOutput> outDevice;
+    MidiDeviceInfo deviceInfo;
+    std::unique_ptr<MidiInput> inDevice;
+    std::unique_ptr<MidiOutput> outDevice;
 
-    typedef ReferenceCountedObjectPtr<MidiDeviceListEntry> Ptr;
+    using Ptr = ReferenceCountedObjectPtr<MidiDeviceListEntry>;
 };
+
 
 //==============================================================================
 struct MidiCallbackMessage : public Message
@@ -73,29 +74,29 @@ public:
     }
 
     //==============================================================================
-    void paintListBoxItem (int rowNumber, Graphics &g,
+    void paintListBoxItem (int rowNumber, Graphics& g,
                            int width, int height, bool rowIsSelected) override
     {
-        const auto textColour = getLookAndFeel().findColour (ListBox::textColourId);
+        auto textColour = getLookAndFeel().findColour (ListBox::textColourId);
 
         if (rowIsSelected)
             g.fillAll (textColour.interpolatedWith (getLookAndFeel().findColour (ListBox::backgroundColourId), 0.5));
 
 
         g.setColour (textColour);
-        g.setFont (height * 0.7f);
+        g.setFont ((float) height * 0.7f);
 
         if (isInput)
         {
             if (rowNumber < parent.getNumMidiInputs())
-                g.drawText (parent.getMidiDevice (rowNumber, true)->name,
+                g.drawText (parent.getMidiDevice (rowNumber, true)->deviceInfo.name,
                             5, 0, width, height,
                             Justification::centredLeft, true);
         }
         else
         {
             if (rowNumber < parent.getNumMidiOutputs())
-                g.drawText (parent.getMidiDevice (rowNumber, false)->name,
+                g.drawText (parent.getMidiDevice (rowNumber, false)->deviceInfo.name,
                             5, 0, width, height,
                             Justification::centredLeft, true);
         }
@@ -301,21 +302,21 @@ MainContentComponent::MainContentComponent ()
 	unpressedButtonImg = ImageCache::getFromMemory(BinaryData::ledcirclegreymd_png, BinaryData::ledcirclegreymd_pngSize);
 
 	addAndMakeVisible(buttonA);	
-	setupButton(&buttonA, &buttonALabel, this, "A", pressedButtonImg, unpressedButtonImg);
+	setupButton(&buttonA, &buttonALabel, this, const_cast<char*>("A"), pressedButtonImg, unpressedButtonImg);
 	buttonA.addListener (this);
 	buttonA.setClickingTogglesState(true);
 	addAndMakeVisible(buttonALabel);
 	//buttonA.setLookAndFeel(&buttonLookAndFeel);
 
 	addAndMakeVisible(buttonB);
-	setupButton(&buttonB, &buttonBLabel, this, "B", pressedButtonImg, unpressedButtonImg);
+	setupButton(&buttonB, &buttonBLabel, this, const_cast<char*>("B"), pressedButtonImg, unpressedButtonImg);
 	buttonB.addListener(this);
 	buttonB.setClickingTogglesState(true);
 	addAndMakeVisible(buttonBLabel);
 	//buttonB.setLookAndFeel(&buttonLookAndFeel);
 
 	// Effect title	
-	setupEffectLabel(&effectLabel, this, "AUDIO EFFECT");
+	setupEffectLabel(&effectLabel, this, const_cast<char*>("AUDIO EFFECT"));
 	addAndMakeVisible(effectLabel);
 	
 	// Knob 1/2/3/4 Setup
@@ -340,7 +341,7 @@ MainContentComponent::MainContentComponent ()
     addAndMakeVisible (midiOutputSelector);
 
 	// Setup the param tree
-	paramTree = new XmlElement("params");
+	paramTree = std::make_unique<XmlElement>("params");
 	paramTree->setAttribute(effectLabel.getLabelName(), effectLabel.getText());
 	paramTree->setAttribute(knob1Label.getLabelName(), knob1Label.getText());
 	paramTree->setAttribute(knob2Label.getLabelName(), knob2Label.getText());
@@ -375,9 +376,6 @@ MainContentComponent::~MainContentComponent()
     midiInputSelector = nullptr;
     midiOutputSelector = nullptr;
     midiOutputSelector = nullptr;
-
-	paramTree = nullptr;
-	//if (paramTree) delete paramTree;
 }
 
 //==============================================================================
@@ -519,7 +517,7 @@ void MainContentComponent::buttonClicked(Button* buttonThatWasClicked)
 		if (myChooser.browseForFileToOpen())
 		{
 			File xmlFile(myChooser.getResult());
-			if (paramTree) delete paramTree;
+
 			paramTree = XmlDocument::parse(xmlFile);
 
 			if (!paramTree) {
@@ -617,46 +615,47 @@ void MainContentComponent::textEditorTextChanged(TextEditor &editor)
 }
 
 //==============================================================================
-bool MainContentComponent::hasDeviceListChanged (const StringArray& deviceNames, bool isInputDevice)
+bool MainContentComponent::hasDeviceListChanged (const Array<MidiDeviceInfo>& availableDevices, bool isInputDevice)
 {
     ReferenceCountedArray<MidiDeviceListEntry>& midiDevices = isInputDevice ? midiInputs
                                                                             : midiOutputs;
 
-    if (deviceNames.size() != midiDevices.size())
+    if (availableDevices.size() != midiDevices.size())
         return true;
 
-    for (int i = 0; i < deviceNames.size(); ++i)
-        if (deviceNames[i] != midiDevices[i]->name)
+    for (auto i = 0; i < availableDevices.size(); ++i)
+        if (availableDevices[i] != midiDevices[i]->deviceInfo)
             return true;
 
     return false;
 }
 
-MidiDeviceListEntry::Ptr MainContentComponent::findDeviceWithName (const String& name, bool isInputDevice) const
+ReferenceCountedObjectPtr<MidiDeviceListEntry> MainContentComponent::findDevice (MidiDeviceInfo device, bool isInputDevice) const
 {
     const ReferenceCountedArray<MidiDeviceListEntry>& midiDevices = isInputDevice ? midiInputs
                                                                                   : midiOutputs;
 
-    for (int i = 0; i < midiDevices.size(); ++i)
-        if (midiDevices[i]->name == name)
-            return midiDevices[i];
+    for (auto& d : midiDevices)
+        if (d->deviceInfo == device)
+            return d;
 
     return nullptr;
 }
 
-void MainContentComponent::closeUnpluggedDevices (StringArray& currentlyPluggedInDevices, bool isInputDevice)
+
+void MainContentComponent::closeUnpluggedDevices (const Array<MidiDeviceInfo>& currentlyPluggedInDevices, bool isInputDevice)
 {
     ReferenceCountedArray<MidiDeviceListEntry>& midiDevices = isInputDevice ? midiInputs
                                                                             : midiOutputs;
 
-    for (int i = midiDevices.size(); --i >= 0;)
+    for (auto i = midiDevices.size(); --i >= 0;)
     {
-        MidiDeviceListEntry& d = *midiDevices[i];
+        auto& d = *midiDevices[i];
 
-        if (! currentlyPluggedInDevices.contains (d.name))
+        if (! currentlyPluggedInDevices.contains (d.deviceInfo))
         {
-            if (isInputDevice ? d.inDevice != nullptr
-                              : d.outDevice != nullptr)
+            if (isInputDevice ? d.inDevice .get() != nullptr
+                              : d.outDevice.get() != nullptr)
                 closeDevice (isInputDevice, i);
 
             midiDevices.remove (i);
@@ -666,26 +665,26 @@ void MainContentComponent::closeUnpluggedDevices (StringArray& currentlyPluggedI
 
 void MainContentComponent::updateDeviceList (bool isInputDeviceList)
 {
-    StringArray newDeviceNames = isInputDeviceList ? MidiInput::getDevices()
-                                                   : MidiOutput::getDevices();
+    auto availableDevices = isInputDeviceList ? MidiInput::getAvailableDevices()
+                                              : MidiOutput::getAvailableDevices();
 
-    if (hasDeviceListChanged (newDeviceNames, isInputDeviceList))
+    if (hasDeviceListChanged (availableDevices, isInputDeviceList))
     {
 
         ReferenceCountedArray<MidiDeviceListEntry>& midiDevices
             = isInputDeviceList ? midiInputs : midiOutputs;
 
-        closeUnpluggedDevices (newDeviceNames, isInputDeviceList);
+        closeUnpluggedDevices (availableDevices, isInputDeviceList);
 
         ReferenceCountedArray<MidiDeviceListEntry> newDeviceList;
 
         // add all currently plugged-in devices to the device list
-        for (int i = 0; i < newDeviceNames.size(); ++i)
+        for (auto& newDevice : availableDevices)
         {
-            MidiDeviceListEntry::Ptr entry = findDeviceWithName (newDeviceNames[i], isInputDeviceList);
+            MidiDeviceListEntry::Ptr entry = findDevice (newDevice, isInputDeviceList);
 
             if (entry == nullptr)
-                entry = new MidiDeviceListEntry (newDeviceNames[i]);
+                entry = new MidiDeviceListEntry (newDevice);
 
             newDeviceList.add (entry);
         }
@@ -694,7 +693,7 @@ void MainContentComponent::updateDeviceList (bool isInputDeviceList)
         midiDevices = newDeviceList;
 
         // update the selection status of the combo-box
-        if (MidiDeviceListBox* midiSelector = isInputDeviceList ? midiInputSelector : midiOutputSelector)
+        if (auto* midiSelector = isInputDeviceList ? midiInputSelector.get() : midiOutputSelector.get())
             midiSelector->syncSelectedItemsWithDeviceList (midiDevices);
     }
 }
@@ -755,12 +754,12 @@ void MainContentComponent::openDevice (bool isInput, int index)
 {
     if (isInput)
     {
-        jassert (midiInputs[index]->inDevice == nullptr);
-        midiInputs[index]->inDevice = MidiInput::openDevice (index, this);
+        jassert (midiInputs[index]->inDevice.get() == nullptr);
+        midiInputs[index]->inDevice = MidiInput::openDevice (midiInputs[index]->deviceInfo.identifier, this);
 
-        if (midiInputs[index]->inDevice == nullptr)
+        if (midiInputs[index]->inDevice.get() == nullptr)
         {
-            DBG ("MainContentComponent::openDevice: open input device for index = " << index << " failed!" );
+            DBG ("MidiDemo::openDevice: open input device for index = " << index << " failed!");
             return;
         }
 
@@ -768,11 +767,13 @@ void MainContentComponent::openDevice (bool isInput, int index)
     }
     else
     {
-        jassert (midiOutputs[index]->outDevice == nullptr);
-        midiOutputs[index]->outDevice = MidiOutput::openDevice (index);
+        jassert (midiOutputs[index]->outDevice.get() == nullptr);
+        midiOutputs[index]->outDevice = MidiOutput::openDevice (midiOutputs[index]->deviceInfo.identifier);
 
-        if (midiOutputs[index]->outDevice == nullptr)
-            DBG ("MainContentComponent::openDevice: open output device for index = " << index << " failed!" );
+        if (midiOutputs[index]->outDevice.get() == nullptr)
+        {
+            DBG ("MidiDemo::openDevice: open output device for index = " << index << " failed!");
+        }
     }
 }
 

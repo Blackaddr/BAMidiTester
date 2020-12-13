@@ -60,8 +60,6 @@ public:
 		g.fillEllipse(rx, ry, rw, rw);
 
 		// outline
-		//g.setColour(Colours::black);
-		//g.setGradientFill(ColourGradient(BAColour, centreX, centreY, Colours::white, centreX + radius, centreY + radius, true));
 		g.setColour(BAColour);
 		g.drawEllipse(rx, ry, rw, rw, outlineWidth);
 
@@ -96,10 +94,10 @@ private:
 class ParamLabel : public Label
 {
 public:
-	ParamLabel(const String &componentName = String(), const String &labelText = String(), String &labelName = String())
+	ParamLabel(const String &componentName = String(), const String &labelText = String(), String labelName = String())
 		: Label(componentName, labelText), m_labelName(labelName){}
 
-	void setLabelName(String &labelName) { m_labelName = labelName;  }
+	void setLabelName(String labelName) { m_labelName = labelName;  }
 	String &getLabelName(void) { return m_labelName;  }
 private:
 	String m_labelName;
@@ -149,16 +147,16 @@ private:
     void sendToOutputs(const MidiMessage& msg);
 
     //==============================================================================
-    bool hasDeviceListChanged (const StringArray& deviceNames, bool isInputDevice);
-    ReferenceCountedObjectPtr<MidiDeviceListEntry> findDeviceWithName (const String& name, bool isInputDevice) const;
-    void closeUnpluggedDevices (StringArray& currentlyPluggedInDevices, bool isInputDevice);
+    bool hasDeviceListChanged (const Array<MidiDeviceInfo>& availableDevices, bool isInputDevice);
+    ReferenceCountedObjectPtr<MidiDeviceListEntry> findDevice (MidiDeviceInfo device, bool isInputDevice) const;
+    void closeUnpluggedDevices (const Array<MidiDeviceInfo>& currentlyPluggedInDevices, bool isInputDevice);
     void updateDeviceList (bool isInputDeviceList);
 
     //==============================================================================
     void addLabelAndSetStyle (Label& label);
 
     //==============================================================================
-	XmlElement *paramTree = nullptr;
+	std::unique_ptr<XmlElement> paramTree = nullptr;
 	//ValueTree paramNamesTree = ValueTree(String("params"));
 	//ValueTree paramNamesTree = ValueTree(String("params"), { {"p"},{"1"} });
 

@@ -1,1 +1,2 @@
+rootProject.name = 'BAMidiTester'
 include ':app'
